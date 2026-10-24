@@ -1,127 +1,73 @@
-# 🏦 Simulador de Empréstimo Consignado (MVP)
-
-MVP desenvolvido para o desafio técnico de Estágio em Desenvolvimento. O objetivo da aplicação é permitir que o cliente solicite uma simulação de empréstimo consignado e consulte a avaliação de diferentes instituições bancárias simuladas em tempo real.
-
----
+Markdown
+# 🏦 Simulador de Empréstimo Consignado
 
 ## 💻 Stack Tecnológica
+- **Backend:** Node.js, TypeScript, Fastify, Zod, Vitest.
+- **Frontend:** React, Vite, Axios.
 
-- **Backend:**
-  - **Node.js** & **TypeScript**
-  - **Fastify** (Framework web leve e de alta performance)
-  - **Zod** (Validação e parsing estrito de dados)
-  - **Vitest** (Suíte de testes unitários rápidos)
+## 📐 Arquitetura
+A solução utiliza o **Padrão Adapter / Gateway** para encapsular e padronizar a comunicação com entidades externas (Bancos). As chamadas de simulação são executadas concorrentemente (`Promise.all`), com controle de timeout individual para assegurar que a lentidão de uma API não afete a experiência global, garantindo alta resiliência (Fail-Safe).
 
-- **Frontend:**
-  - **React** & **Vite**
-  - **TypeScript**
-  - **Axios** (Cliente HTTP para integração com a API)
+## 🚀 Como Executar
 
----
-
-## 📐 Arquitetura e Decisões Técnicas
-
-A solução foi estruturada aplicando os princípios de **Clean Architecture** e **Ports & Adapters (Arquitetura Hexagonal)**, focando em resiliência e facilidade de extensão:
-
-1. **Padrão Gateway / Adapter (`BankGateway`):**
-   - Foi criada a interface `BankGateway` no domínio para definir o contrato único de comunicação com qualquer banco.
-   - Cada banco possui o seu próprio Adapter (`BancoAlfaGateway`, `BancoBetaGateway`), isolando regras internas, formatos de resposta e particularidades de cada instituição.
-
-2. **Orquestração Resiliente (`Promise.allSettled`):**
-   - As simulações são disparadas em paralelo.
-   - Utilizou-se `Promise.allSettled` com um mecanismo de *timeout* individual (3 segundos por banco). Caso uma instituição falhe, demore a responder ou lance uma exceção, o sistema captura a falha, marca o banco como `UNAVAILABLE` e exibe normalmente os resultados das instituições que responderam com sucesso.
-
-3. **Validação de Dados:**
-   - Uso da biblioteca **Zod** no backend para garantir a integridade de campos obrigatórios (CPF, Salário, CNPJ do Empregador, Valor Solicitado e Parcelas).
-
----
-
-## 🚀 Como Executar o Projeto
-
-### Pré-requisitos
-- **Node.js** (v18 ou superior)
-- **npm**
-
-### 1. Clonar o Repositório
+### 1. Backend
+Execute numa janela de terminal:
 ```bash
-git clone [https://github.com/erasmobarros/Desafio-tecnico-Estagio-em-Desenvolvimento.git](https://github.com/erasmobarros/Desafio-tecnico-Estagio-em-Desenvolvimento.git)
-cd Desafio-tecnico-Estagio-em-Desenvolvimento
-
-2. Executar o Backend
-Bash
 cd backend
 npm install
 npm run dev
-O servidor backend estará a rodar no endereço http://localhost:3333.
+(Para testes unitários execute npm test -- --run)
 
-Para executar a suíte de testes unitários:
-
-Bash
-npm test
-3. Executar o Frontend
-Em uma nova aba ou janela do terminal:
+2. Frontend
+Execute noutra janela de terminal:
 
 Bash
-cd ../frontend
+cd frontend
 npm install
 npm run dev
-Aceda à interface web no endereço indicado pelo Vite (normalmente http://localhost:5173).
+
 ```
 
----
+### ⚠️ Limitações Atuais
+Timeout Não Abortivo (Falta de AbortController): O timeout da promessa protege o cliente final, mas a requisição TCP subjacente ao banco não é interrompida, mantendo processamento em segundo plano.
 
-### ⚠️ Limitações da Solução Atual
-Simulação em Memória: Não há integração com base de dados para persistência do histórico de simulações.
+Armazenamento: Simulação Stateless em memória, sem persistência em base de dados.
 
-Mocks Locais: As chamadas para os bancos utilizam dados e regras simuladas localmente com latências fictícias.
+Segurança de Origem: CORS aberto (origin: '*') para viabilizar testes locais no MVP.
 
-Sem Autenticação: A aplicação não possui controlo de sessão ou gestão de utilizadores.
+Testes de Integração: Rota HTTP ainda não possui cobertura de testes de integração ponta-a-ponta (E2E).
 
----
+### 💡 Espaço para Propor
+## 🛠️ Propostas Já Implementadas
+1. Zod com Validação Estrita (CPF/CNPJ e Tabela Price)
 
-## 💡 Espaço para Propor
+Problema: Inputs manipulados ou mal formados causam "tela branca" no frontend e quebram a Tabela Price com valores tendendo ao infinito.
 
-### 🛠️ Propostas Implementadas
-1. Resiliência e Isolamento de Falhas nas Integrações Bancárias
-Problema: A empresa depende de APIs bancárias de terceiros sobre as quais não possui controlo. Instabilidades ou indisponibilidades em um banco parceiro poderiam travar toda a simulação do cliente.
+Proposta: Sanitização (remoção de máscaras) e validação matemática de dígitos verificadores para CPF/CNPJ, acompanhada de imposição de limites máximos (R$ 500.000).
 
-Proposta: Implementação do padrão Adapter associado ao consumo em paralelo via Promise.allSettled e limite de tempo (timeout) individual por requisição.
+Por quê: Blinda a API de bad payloads e reduz o custo operacional com chamadas inúteis aos bancos.
 
-Por quê: Garante que a operação continue funcional e que o cliente receba os resultados parciais dos bancos disponíveis, impedindo que o sistema falhe por completo devido a um erro externo.
+2. Timeout Global Resiliente
 
-2. Normalização de Respostas Heterogéneas
-Problema: Cada instituição financeira retorna dados em estruturas, tipos de taxa e formatos de status totalmente distintos.
+Problema: Uma falha ou latência severa num banco específico derruba a requisição inteira.
 
-Proposta: Mapeamento e conversão de dados dentro de cada Gateway para um modelo de resposta padronizado no domínio (BankResult).
+Proposta: Utilização de concorrência com timers (clearTimeout) que devolvem o status Indisponível se o banco não responder em 3 segundos.
 
-Por quê: Simplifica o consumo e a renderização na interface do utilizador, além de permitir a adição de novos bancos com impacto zero no restante da aplicação.
+Por quê: Otimiza a taxa de conversão ao garantir que ofertas válidas cheguem ao ecrã do cliente mesmo com integrações terceiras degradadas.
 
-### 📋 Propostas Planejadas (por ordem de prioridade)
+📋 Próximas Evoluções (Backlog)
+Prioridade 1: Prevenção de Vazamento de PII em Logs
 
-## Prioridade 1: Processamento Assíncrono e Server-Sent Events (SSE)
-Problema: O cliente precisa de aguardar em uma tela estática até que todas as chamadas bancárias sejam concluídas.
+Problema: Na eventual implementação de um Logger centralizado para observabilidade, dados sensíveis (CPF, Salário) podem ser escritos em texto puro.
 
-Proposta: Arquitetura assíncrona baseada em filas de mensagens (ex: Redis + BullMQ) com streaming de resultados para o frontend via Server-Sent Events (SSE).
+Proposta: Implementar redatores (redact) na configuração do Fastify/Pino para mascarar dados de request.body.
 
-Por quê: Permite exibir a oferta de cada banco no ecrã no exato momento em que ela é processada, reduzindo a perceção do tempo de espera e aumentando a taxa de conversão do produto.
+Por quê: Adequação estrita às normas de privacidade e mitigação de danos em caso de exposição de logs.
 
-## Prioridade 2: Cache de Cotações e Rate Limiting
-Problema: Clientes que clicam repetidamente no botão "Simular" geram custos desnecessários de infraestrutura e chamadas repetidas a APIs externas.
+Prioridade 2: Processamento Assíncrono (Webhooks ou SSE)
 
-Proposta: Implementar uma camada de cache temporário (TTL de 5 minutos) indexada pelo hash da simulação (CPF + Valor + Parcelas) e aplicar limitação de taxa (Rate Limiting) por IP/CPF.
+Problema: O bloqueio HTTP síncrono força o cliente a esperar pela resposta mais lenta dentre os gateways disponíveis.
 
-Por quê: Protege a infraestrutura contra abusos, economiza recursos operacionais e entrega respostas instantâneas para requisições duplicadas.
+Proposta: Alterar a interface para um modelo Assíncrono (Server-Sent Events) onde as propostas bancárias vão surgindo na UI em tempo real assim que processadas.
 
-## Prioridade 3: Circuit Breaker por Instituição Financeira
-Problema: Continuar a enviar chamadas para uma API bancária que está comprovadamente fora do ar gera desperdício de recursos e acúmulo de timeouts.
-
-Proposta: Implementar o padrão Circuit Breaker (ex: com a biblioteca opossum) para interromper temporariamente requisições a bancos com alta taxa de erro.
-
-Por quê: Evita a degradação da performance geral do sistema e permite a recuperação automática das integrações sem intervenção manual.
-
-## Prioridade 4: Sanitização de Logs e Conformidade com a LGPD
-Problema: O registo de logs contendo dados pessoais sensíveis (CPF, salário, e-mail) em texto puro pode gerar passivos jurídicos e violações de privacidade.
-
-Proposta: Criar um middleware de logging que aplica mascaramento automático de dados sensíveis (***.456.789-**) antes da persistência de qualquer registo de auditoria.
-
-Por quê: Garante a conformidade contínua com a LGPD e amplia a segurança da informação na infraestrutura da empresa.
+Por quê: Transforma o tempo de espera numa experiência interativa, diminuindo o abandono de fluxo (Drop-off).

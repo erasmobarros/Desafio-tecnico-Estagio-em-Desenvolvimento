@@ -1,22 +1,23 @@
-export type LoanRequest = {
+export interface LoanRequest {
   cpf: string;
-  salary: number;
   employerCnpj: string;
+  name: string;
+  email: string;
+  salary: number;
   requestedAmount: number;
   installments: number;
-};
+}
 
-export type BankStatus = 'APPROVED' | 'REJECTED' | 'UNAVAILABLE';
-
-export type BankResult = {
+export interface BankResult {
   bankName: string;
-  status: BankStatus;
+  status: 'APPROVED' | 'REJECTED' | 'UNAVAILABLE';
   interestRate?: number;
   installmentValue?: number;
   totalAmount?: number;
   reason?: string;
-};
+}
 
 export interface BankGateway {
+  readonly name: string;
   simulate(request: LoanRequest): Promise<BankResult>;
 }

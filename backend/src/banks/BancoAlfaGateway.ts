@@ -1,28 +1,30 @@
-import type { BankGateway, BankResult } from '../domain/simulation.js';
+import type { BankGateway, BankResult, LoanRequest } from '../domain/simulation.js';
 
 export class BancoAlfaGateway implements BankGateway {
   readonly name = 'Banco Alfa';
 
-  async simulate(cpf: string, salary: number, amount: number, installments: number): Promise<BankResult> {
-    // Simula tempo de resposta da API externa
+  async simulate(request: LoanRequest): Promise<BankResult> {
     await new Promise(resolve => setTimeout(resolve, 800));
-    // Regras de negócio do Banco Alfa
-    if (salary < 1412) {
+
+    if (request.salary < 1412) {
       return { bankName: this.name, status: 'REJECTED', reason: 'Salário inferior ao mínimo' };
     }
 
-    const interestRate = 0.015; 
+    const interestRate = 0.015; // 1.5% a.m.
+    const pmt = (request.requestedAmount * interestRate) / (1 - Math.pow(1 + interestRate, -request.installments));
     
-    // Cálculo financeiro
-    const pmt = (amount * interestRate) / (1 - Math.pow(1 + interestRate, -installments));
-    const total = pmt * installments;
+    // Regra da margem de 35%
+    if (pmt > request.salary * 0.35) {
+      return { bankName: this.name, status: 'REJECTED', reason: 'Parcela excede a margem consignável de 35%' };
+    }
 
+    // Se aprovado, devolve TODOS os dados para a tabela aparecer
     return {
-      bankName: this.name,
-      status: 'APPROVED',
+      bankName: this.name, 
+      status: 'APPROVED', 
       interestRate,
-      installmentValue: pmt,
-      totalAmount: total,
+      installmentValue: pmt, 
+      totalAmount: pmt * request.installments,
     };
   }
 }

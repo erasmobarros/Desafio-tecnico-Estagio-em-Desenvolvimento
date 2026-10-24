@@ -37,7 +37,7 @@ export function App() {
         installments: Number(formData.installments),
       });
       setResults(response.data);
-    } catch (error: any) {
+    } catch (error) { // Removido o "error: any", o TypeScript agora infere corretamente com o isAxiosError
       if (axios.isAxiosError(error) && error.response) {
         setErrorMessage(error.response.data?.message || 'Dados inválidos.');
       } else {
@@ -115,7 +115,10 @@ export function App() {
                   {isBestOffer && <span style={{ background: '#28a745', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>Melhor Oferta</span>}
                 </div>
                 
-                <p style={{ margin: '8px 0' }}><strong>Status:</strong> {bank.status}</p>
+                {/* Status traduzido para o utilizador */}
+                <p style={{ margin: '8px 0' }}>
+                  <strong>Status:</strong> {bank.status === 'APPROVED' ? 'Aprovado' : bank.status === 'REJECTED' ? 'Reprovado' : 'Indisponível'}
+                </p>
                 
                 {bank.status === 'APPROVED' && bank.installmentValue && bank.totalAmount && bank.interestRate && (
                   <>
