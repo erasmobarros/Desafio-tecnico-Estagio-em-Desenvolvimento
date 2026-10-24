@@ -55,7 +55,7 @@ const simulationSchema = z.object({
     .refine(isValidCPF, 'CPF inválido'),
   employerCnpj: z.string()
     .transform(v => v.replace(/\D/g, ''))
-    .refine(v => v.length === 14, 'CNPJ deve ter 14 dígitos'),
+    .refine(isValidCNPJ, 'CNPJ inválido'),
   salary: z.number().positive('Salário inválido'),
   requestedAmount: z.number().min(100).max(500000, 'Valor máximo permitido é R$ 500.000'),
   installments: z.number().int().min(6).max(96, 'Permitido entre 6 e 96 parcelas'),
